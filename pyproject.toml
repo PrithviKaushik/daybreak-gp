@@ -1,7 +1,7 @@
 [project]
 name = "daybreak-gp"
 version = "0.1.0"
-description = "Non-stationary vs. stationary Gaussian Processes for solar PV forecasting on SOLETE, with uncertainty evaluation and a reproducible ML pipeline."
+description = "Stationary vs. non-stationary Gaussian Processes for solar PV modelling on SOLETE: accuracy, uncertainty calibration, reproducible pipeline."
 readme = "README.md"
 authors = [
     { name = "Prithvi Kaushik", email = "prithvik.work@gmail.com" }
