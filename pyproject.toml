@@ -1,0 +1,27 @@
+[project]
+name = "daybreak-gp"
+version = "0.1.0"
+description = "Non-stationary vs. stationary Gaussian Processes for solar PV forecasting on SOLETE, with uncertainty evaluation and a reproducible ML pipeline."
+readme = "README.md"
+authors = [
+    { name = "Prithvi Kaushik", email = "prithvik.work@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "marimo>=0.25.2",
+    "matplotlib>=3.11.2",
+    "nbconvert>=7.17.2",
+    "nbformat>=5.11.1",
+    "numpy>=2.5.4",
+    "pandas>=3.1.0",
+    "playwright>=1.64.1",
+    "pyarrow>=26.0.0",
+    "scikit-learn>=1.9.1",
+]
+
+[project.scripts]
+daybreak-gp = "daybreak_gp:main"
+
+[build-system]
+requires = ["uv_build>=0.12.24,<0.13.0"]
+build-backend = "uv_build"
