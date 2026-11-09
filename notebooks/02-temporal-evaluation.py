@@ -569,67 +569,68 @@ def _(mo):
     mo.md(r"""
     ## Verification
 
-    The checks below confirm the candidate count, observation completeness, QC integrity, regime-count consistency, and the per-season selection and tie-breaking logic. Any failure is printed and raises an assertion rather than being silently ignored.
+    The final checks validate candidate-window integrity and the seasonal selection rule.
+
+    First, the candidate audit is checked to ensure that:
+    - All 19 candidate windows were generated.
+    - Each window contains exactly 504 hourly observations.
+    - No expected hourly timestamps are missing.
+    - No observations have QC substitution flags (code 6).
+    - Night, ramp, and daylight counts sum to 504 for every window.
+
+    Next, the selected windows are verified independently. For each season, eligible candidates are reconstructed, the median daylight count is recalculated, and the candidate closest to that median is identified. Ties are resolved by selecting the earliest start timestamp.
+
+    The selected start and end timestamps are compared against these independently calculated results. Assertions raise an error if any expected condition is not satisfied.
     """)
     return
 
 
 @app.cell
+def _(candidate_audit):
+    # candidate intergrity
+    assert len(candidate_audit) == 19
+    assert candidate_audit["observations"].eq(504).all()
+    assert candidate_audit["missing_hours"].eq(0).all()
+    assert candidate_audit["substituted_hours"].eq(0).all()
+
+    assert (
+        candidate_audit[["night", "ramp", "daylight"]]
+        .sum(axis=1)
+        .eq(504)
+        .all()
+    )
+    return
+
+
+@app.cell
 def _(candidate_audit, selected_windows):
-    checks = {
-        "19 candidate windows": len(candidate_audit) == 19,
-        "each candidate has 504 observations": candidate_audit["observations"].eq(504).all(),
-        "no candidate has missing timestamps": candidate_audit["missing_hours"].eq(0).all(),
-        "no candidate has QC substitutions": candidate_audit["substituted_hours"].eq(0).all(),
-        "night + ramp + daylight = 504": (
-            candidate_audit[["night", "ramp", "daylight"]].sum(axis=1).eq(504).all()
-        ),
-        "one selected window per season": (
-            selected_windows["season"].value_counts().to_dict() == {"summer": 1, "winter": 1}
-        ),
+    # selection correctness
+    assert selected_windows["season"].value_counts().to_dict() == {
+        "summer": 1,
+        "winter": 1,
     }
 
-    for verification_season in ["summer", "winter"]:
-        verification_eligible = candidate_audit[
-            (candidate_audit["season"] == verification_season)
+    for season in ["summer", "winter"]:
+        eligible = candidate_audit[
+            (candidate_audit["season"] == season)
             & (candidate_audit["missing_hours"] == 0)
             & (candidate_audit["substituted_hours"] == 0)
-        ].copy()
-        verification_median_daylight = verification_eligible["daylight"].median()
-        verification_eligible["distance_from_median"] = (
-            verification_eligible["daylight"] - verification_median_daylight
-        ).abs()
-        verification_best_distance = verification_eligible["distance_from_median"].min()
-        verification_expected = (
-            verification_eligible[
-                verification_eligible["distance_from_median"] == verification_best_distance
-            ]
-            .sort_values("start")
+        ]
+
+        median = eligible["daylight"].median()
+
+        expected = (
+            eligible.assign(distance=(eligible["daylight"] - median).abs())
+            .sort_values(["distance", "start"])
             .iloc[0]
         )
-        verification_actual = selected_windows.loc[
-            selected_windows["season"] == verification_season
+
+        actual = selected_windows.loc[
+            selected_windows["season"] == season
         ].iloc[0]
 
-        checks[
-            f"{verification_season} median uses only {verification_season} candidates"
-        ] = (
-            verification_actual["median_daylight"] == verification_median_daylight
-        )
-        checks[
-            f"{verification_season} selection matches rule and earliest-start tie-break"
-        ] = (
-            verification_actual["start"] == verification_expected["start"]
-            and verification_actual["end"] == verification_expected["end"]
-            and verification_actual["daylight"] == verification_expected["daylight"]
-            and verification_actual["distance_from_median"]
-            == verification_expected["distance_from_median"]
-        )
-
-    for name, passed in checks.items():
-        print(f"{'PASS' if passed else 'FAIL'}: {name}")
-
-    assert all(checks.values())
+        assert actual["start"] == expected["start"]
+        assert actual["end"] == expected["end"]
     return
 
 
