@@ -37,18 +37,10 @@ def _(mo):
 
 
 @app.cell
-def _(mo, pd):
-    notebook_dir = mo.notebook_dir()
-    project_root = notebook_dir.parent
+def _(pd):
+    from daybreak_gp.paths import SOLETE_PARQUET
 
-    data_path = (
-        project_root
-        / "data"
-        / "raw"
-        / "SOLETE_Pombo_60min_v4.parquet"
-    )
-
-    df = pd.read_parquet(data_path)
+    df = pd.read_parquet(SOLETE_PARQUET)
     return (df,)
 
 
